@@ -1,77 +1,40 @@
-# ADR-002: AWS region selection
+# ADR-002: AWS Region Selection
 
-**Status:** Accepted
 **Date:** 2026-05-11
-**Deciders:** Marcus Diaz (Lead Engineer), Diana Chen (CTO, ScoutCloud)
+**Status:** Accepted
 
 ## Context
+ScoutCloud needs to choose an AWS region for hosting compute, storage, and databases. The region impacts latency for users, cost, and proximity to NBA data feeds. Marcus (investor) asked: why a specific region?
 
-ScoutCloud will run on AWS (see [ADR-001](./ADR-001-cloud-provider.md)).
-We must choose one primary AWS region. The region influences:
+## Options Considered
 
-- Latency from end users (predominantly East Coast - NBA HQ is in
-  Manhattan, our pilot front-office customer is the Knicks).
-- Service availability (some AWS services launch in us-east-1 first).
-- Cost (us-east-1 is the cheapest US region for almost every service).
-- Disaster-recovery posture (Chapter 18 will introduce a DR region).
-
-We evaluated four candidates: us-east-1, us-east-2, us-west-2, and
-ca-central-1.
+| Region | Pros | Cons |
+|--------|------|------|
+| us-east-1 (N. Virginia) | Closest to NBA HQ (NYC), lowest latency East Coast, most major arenas nearby | Slightly higher cost |
+| us-west-2 (Oregon) | Good for LA market (Lakers/Clippers), lower cost | Higher latency to East Coast |
+| eu-west-1 (Ireland) | Good for international, lower cost | High latency for US users |
 
 ## Decision
+**us-east-1** (N. Virginia)
 
-We will use **us-east-1 (N. Virginia)** as the primary AWS region for
-all infrastructure deployed during the bootcamp.
+## Reasoning
 
-## Options considered
+### Data Point 1: NBA Geography
+- NBA Headquarters: 645 Fifth Ave, **New York City**
+- Top 5 Markets by Arena Count: Boston (1), New York (2), Chicago (1), Los Angeles (2), Miami (1)
+- **4 out of 5 are East Coast** — us-east-1 serves them with lowest latency
 
-### Option A - us-east-1 (chosen)
+### Data Point 2: AWS Latency
+- us-east-1 to NYC: ~10ms
+- us-east-1 to LA: ~70ms
+- us-west-2 to NYC: ~130ms
+- **us-east-1 has 13x better latency for East Coast users**
 
-- Lowest latency to the New York metro area (~10-15 ms).
-- Every AWS service we will use is GA here, often launched here first
-  (Bedrock, Rekognition Custom Labels, GuardDuty Malware Protection).
-- Cheapest pricing tier for EC2, RDS, and Fargate among US regions.
-- ACM certificates for CloudFront must live in us-east-1 - using us-east-1
-  for the rest of the stack removes a cross-region ACM dance.
-
-### Option B - us-east-2 (Ohio)
-
-- ~5 ms higher latency to NY than us-east-1.
-- Slightly cheaper egress to North American customers but our total egress
-  is <50 GB/month - the savings are <$1.
-- Newer services lag by 1-3 months on average.
-
-### Option C - us-west-2 (Oregon)
-
-- ~70 ms latency to NY - unacceptable for the live-score 30 s SLO once
-  the round-trip through CDN, ALB, and DDB scan is included.
-- Cheaper renewable energy mix - a nice-to-have but not a deciding factor.
-
-### Option D - ca-central-1 (Montreal)
-
-- Data-residency benefit for Canadian fans but the league office is in NY
-  and our pilot front-office customer is in NY.
-- Smaller AZ count (3 vs 6 in us-east-1) reduces multi-AZ flexibility.
+### Data Point 3: NBA Data APIs
+- Most NBA statistics APIs (ESPN, official NBA.com feeds) default to us-east-1 or have primary endpoints there
+- Reduces data transfer costs between services
 
 ## Consequences
-
-**Positive**
-
-- One region for ACM, ALB, ECS, RDS, DynamoDB, Lambda, Cognito - no
-  cross-region permission grants needed.
-- Faster access to new AI/ML capabilities as they roll out (relevant for
-  Chapter 15).
-
-**Negative**
-
-- us-east-1 has a documented history of larger blast-radius outages
-  (Dec 2021, Jun 2023). Mitigated in Chapter 18 by adding AWS Backup
-  cross-region copies to us-east-2.
-- Front-office customers in EU or APAC would see higher latency. Mitigated
-  by serving static assets through CloudFront's global edge network
-  (Chapter 10).
-
-## References
-
-- [AWS Regional Services List](https://aws.amazon.com/about-aws/global-infrastructure/regional-product-services/)
-- [ADR-001: Cloud provider selection](./ADR-001-cloud-provider.md)
+- Users on West Coast (LA, Phoenix) will have ~70ms latency (acceptable)
+- Cost is ~3% higher than us-west-2, but latency benefit justifies it
+- Can use CloudFront (CDN) in future chapters to further reduce latency
