@@ -1,3 +1,8 @@
+import os
+
+path = os.path.expanduser('~/scoutcloud/scoutcloud.dev/infra/ec2.tf')
+
+content = r'''
 # ec2.tf — ScoutCloud web server
 data "aws_ami" "amazon_linux_2023" {
   most_recent = true
@@ -169,3 +174,8 @@ output "web_public_ip" {
   value       = aws_instance.web.public_ip
   description = "Public IP of the ScoutCloud web server"
 }
+'''
+
+with open(path, 'w') as f:
+    f.write(content.strip())
+print("Done! ec2.tf written successfully.")
