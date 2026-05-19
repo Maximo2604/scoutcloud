@@ -10,6 +10,10 @@ terraform {
       source  = "hashicorp/http"
       version = "~> 3.0"
     }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.0"
+    }
   }
 }
 
@@ -50,3 +54,43 @@ output "contractor_secret_access_key" {
   value     = aws_iam_access_key.contractor.secret
   sensitive = true
 }
+
+resource "aws_iam_openid_connect_provider" "github" {
+  url             = "https://token.actions.githubusercontent.com"
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = []
+}
+
+resource "aws_iam_role" "github_actions" {
+  name = "scoutcloud-github-actions"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Federated = aws_iam_openid_connect_provider.github.arn }
+      Action    = "sts:AssumeRoleWithWebIdentity"
+      Condition = {
+        StringLike = {
+          "token.actions.githubusercontent.com:sub" = "repo:Maximo2604/scoutcloud:*"
+        }
+      }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "github_actions_s3" {
+  name = "scoutcloud-s3-sync"
+  role = aws_iam_role.github_actions.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
+      Resource = [aws_s3_bucket.assets.arn, "${aws_s3_bucket.assets.arn}/*"]
+    }]
+  })
+}
+
+output "github_actions_role_arn" { value = aws_iam_role.github_actions.arn }
