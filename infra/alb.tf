@@ -83,7 +83,22 @@ footer{{text-align:center;color:#334155;font-size:.75rem;margin-top:3rem;padding
 
 @app.route("/health")
 def health():
-    return jsonify(status="ok", host=HOST, version="ch5-asg")
+    import datetime
+    try:
+        import urllib.request
+        instance_id = urllib.request.urlopen(
+            "http://169.254.169.254/latest/meta-data/instance-id", timeout=2
+        ).read().decode()
+    except:
+        instance_id = HOST
+    with open("/proc/uptime") as f:
+        uptime_seconds = int(float(f.read().split()[0]))
+    return jsonify(
+        status="ok",
+        instance_id=instance_id,
+        current_time=datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        uptime_seconds=uptime_seconds
+    )
 
 @app.route("/api/games")
 def games():
@@ -132,6 +147,10 @@ data "aws_subnets" "default" {
   filter {
     name   = "vpc-id"
     values = [data.aws_vpc.default.id]
+  }
+  filter {
+    name   = "availabilityZone"
+    values = ["us-east-1a", "us-east-1b", "us-east-1c", "us-east-1d", "us-east-1f"]
   }
 }
 
