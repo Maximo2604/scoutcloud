@@ -12,3 +12,16 @@ resource "aws_ecr_repository" "score_fetcher" {
 output "ecr_repository_url" {
   value = aws_ecr_repository.score_fetcher.repository_url
 }
+
+resource "aws_ecr_repository" "app" {
+  name                 = "scoutcloud/app"
+  image_tag_mutability = "MUTABLE"
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+  tags = { Name = "scoutcloud-app", Project = "scoutcloud" }
+}
+
+output "ecr_app_url" {
+  value = aws_ecr_repository.app.repository_url
+}
