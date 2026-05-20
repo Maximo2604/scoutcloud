@@ -164,3 +164,43 @@ resource "aws_ecs_service" "score_fetcher" {
   }
   tags = { Project = "scoutcloud" }
 }
+
+resource "aws_cloudwatch_log_group" "app" {
+  name              = "/ecs/scoutcloud-app"
+  retention_in_days = 7
+}
+
+resource "aws_ecs_task_definition" "app" {
+  family                   = "scoutcloud-app"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = aws_iam_role.ecs_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task.arn
+  container_definitions = jsonencode([{
+    name  = "scoutcloud-app"
+    image = "${aws_ecr_repository.app.repository_url}:latest"
+    portMappings = [{ containerPort = 80, hostPort = 80, protocol = "tcp" }]
+    environment = [
+      { name = "DATABASE_URL", value = "postgresql://scoutadmin:ScDb!R3c0rds%232026@${aws_db_instance.main.endpoint}/scoutcloud" },
+      { name = "DYNAMODB_TABLE", value = aws_dynamodb_table.live_scores.name },
+      { name = "AWS_REGION", value = "us-east-1" }
+    ]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        "awslogs-group"         = "/ecs/scoutcloud-app"
+        "awslogs-region"        = "us-east-1"
+        "awslogs-stream-prefix" = "ecs"
+      }
+    }
+    healthCheck = {
+      command     = ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
+      interval    = 30
+      timeout     = 5
+      retries     = 3
+      startPeriod = 10
+    }
+  }])
+}
