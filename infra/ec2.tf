@@ -44,7 +44,7 @@ resource "aws_security_group" "web" {
 
 resource "aws_key_pair" "deployer" {
   key_name   = "scoutcloud-key"
-  public_key = file("~/.ssh/scoutcloud-key.pem.pub")
+  public_key = var.ec2_public_key
 }
 
 resource "aws_instance" "web" {

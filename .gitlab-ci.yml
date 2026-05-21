@@ -1,0 +1,44 @@
+stages:
+  - validate
+  - security
+  - plan
+  - apply
+
+variables:
+  TF_DIR: infra
+
+default:
+  image: hashicorp/terraform:latest
+  before_script:
+    - cd $TF_DIR
+    - terraform init
+
+validate:
+  stage: validate
+  script:
+    - terraform validate
+    - terraform fmt -check
+
+security:
+  stage: security
+  image: bridgecrew/checkov:latest
+  before_script: []
+  script:
+    - checkov -d $TF_DIR --quiet
+  allow_failure: true
+
+plan:
+  stage: plan
+  script:
+    - terraform plan -out=tfplan
+  artifacts:
+    paths: [$TF_DIR/tfplan]
+    expire_in: 1 hour
+
+apply:
+  stage: apply
+  script:
+    - terraform apply tfplan
+  when: manual
+  only:
+    - main
