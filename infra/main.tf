@@ -107,10 +107,13 @@ resource "aws_iam_role_policy" "github_actions_s3" {
 output "github_actions_role_arn" { value = aws_iam_role.github_actions.arn }
 
 module "compute" {
-  source            = "./modules/compute"
-  ami_id            = data.aws_ami.amazon_linux_2023.id
-  key_name          = "scoutcloud-key"
+  source           = "./modules/compute"
+  ami_id           = data.aws_ami.amazon_linux_2023.id
+  key_name         = "scoutcloud-key"
   security_group_id = aws_security_group.web.id
-  subnet_ids        = data.aws_subnets.default.ids
-  project           = "scoutcloud"
+  subnet_ids       = data.aws_subnets.default.ids
+  project          = "scoutcloud"
+  min_size         = terraform.workspace == "staging" ? 1 : 2
+  max_size         = terraform.workspace == "staging" ? 2 : 6
+  desired_capacity = terraform.workspace == "staging" ? 1 : 2
 }

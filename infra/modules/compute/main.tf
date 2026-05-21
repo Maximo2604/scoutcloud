@@ -24,6 +24,21 @@ variable "project" {
   default = "scoutcloud"
 }
 
+variable "min_size" {
+  type    = number
+  default = 2
+}
+
+variable "max_size" {
+  type    = number
+  default = 6
+}
+
+variable "desired_capacity" {
+  type    = number
+  default = 2
+}
+
 resource "aws_launch_template" "web" {
   name_prefix            = "${var.project}-web-"
   image_id               = var.ami_id
@@ -48,9 +63,9 @@ resource "aws_launch_template" "web" {
 
 resource "aws_autoscaling_group" "web" {
   name                = "${var.project}-asg"
-  min_size            = 2
-  max_size            = 6
-  desired_capacity    = 2
+  min_size            = var.min_size
+  max_size            = var.max_size
+  desired_capacity    = var.desired_capacity
   vpc_zone_identifier = var.subnet_ids
 
   launch_template {
