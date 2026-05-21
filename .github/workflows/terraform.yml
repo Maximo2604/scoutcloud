@@ -32,6 +32,11 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
+        env:
+          TF_VAR_ec2_public_key: ${{ secrets.EC2_PUBLIC_KEY }}
+
+      - name: Set TF vars
+        run: echo "TF_VAR_ec2_public_key=${{ secrets.EC2_PUBLIC_KEY }}" >> $GITHUB_ENV
 
       - name: Terraform Format Check
         run: terraform fmt -check
