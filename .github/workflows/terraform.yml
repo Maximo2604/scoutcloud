@@ -32,11 +32,6 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
-        env:
-          TF_VAR_ec2_public_key: ${{ secrets.EC2_PUBLIC_KEY }}
-
-      - name: Set TF vars
-        run: echo "TF_VAR_ec2_public_key=${{ secrets.EC2_PUBLIC_KEY }}" >> $GITHUB_ENV
 
       - name: Terraform Format Check
         run: terraform fmt -check
@@ -44,12 +39,3 @@ jobs:
 
       - name: Terraform Validate
         run: terraform validate
-
-      - name: Terraform Plan (on PR)
-        if: github.event_name == 'pull_request'
-        id: plan
-        run: terraform plan -no-color
-
-      - name: Terraform Apply (on merge to main)
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: terraform apply -auto-approve
