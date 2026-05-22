@@ -17,10 +17,10 @@ resource "aws_security_group" "web" {
   description = "Security group for ScoutCloud web server"
 
   ingress {
-    description = "HTTP"
-    from_port   = 8080
-    to_port     = 8080
-    protocol    = "tcp"
+    description     = "HTTP"
+    from_port       = 8080
+    to_port         = 8080
+    protocol        = "tcp"
     security_groups = [aws_security_group.alb.id]
   }
 

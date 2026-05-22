@@ -42,21 +42,9 @@ resource "aws_launch_template" "web" {
 
   tag_specifications {
     resource_type = "instance"
-    tags = { Name = "${var.project}-web", Project = var.project }
+    tags          = { Name = "${var.project}-web", Project = var.project }
   }
 }
 
-resource "aws_autoscaling_group" "web" {
-  name                = "${var.project}-asg"
-  min_size            = 2
-  max_size            = 6
-  desired_capacity    = 2
-  vpc_zone_identifier = var.subnet_ids
 
-  launch_template {
-    id      = aws_launch_template.web.id
-    version = "$Latest"
-  }
-}
-
-output "asg_name" { value = aws_autoscaling_group.web.name }
+output "launch_template_id" { value = aws_launch_template.web.id }

@@ -27,3 +27,15 @@ jobs:
 
       - name: Print summary
         run: aws s3 ls s3://${{ secrets.S3_BUCKET_NAME }}/static/ --recursive
+      - name: Invalidate CloudFront cache
+        run: |
+          DOMAIN=$(cd infra && terraform output -raw domain_name 2>/dev/null || echo "app.scoutcloud.dev")
+          DISTRIBUTION_ID=$(aws cloudfront list-distributions \
+            --query "DistributionList.Items[?Aliases.Items[?contains(@,\'$DOMAIN\')]].Id" \
+            --output text)
+          if [ -n "$DISTRIBUTION_ID" ]; then
+            aws cloudfront create-invalidation \
+              --distribution-id $DISTRIBUTION_ID \
+              --paths "/*"
+            echo "Cache invalidated for: $DISTRIBUTION_ID"
+          fi
