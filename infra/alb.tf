@@ -196,7 +196,7 @@ resource "aws_lb" "web" {
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
   subnets            = data.aws_subnets.default.ids
-  tags = { Name = "scoutcloud-alb", Project = "scoutcloud" }
+  tags               = { Name = "scoutcloud-alb", Project = "scoutcloud" }
 }
 
 resource "aws_lb_target_group" "web" {

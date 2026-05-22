@@ -118,7 +118,7 @@ resource "aws_vpc_endpoint" "s3" {
   service_name      = "com.amazonaws.us-east-1.s3"
   vpc_endpoint_type = "Gateway"
   route_table_ids   = data.aws_route_tables.default.ids
-  tags = { Name = "scoutcloud-vpce-s3", Project = "scoutcloud" }
+  tags              = { Name = "scoutcloud-vpce-s3", Project = "scoutcloud" }
 }
 
 resource "aws_vpc_endpoint" "ecr_api" {
@@ -128,7 +128,7 @@ resource "aws_vpc_endpoint" "ecr_api" {
   subnet_ids          = data.aws_subnets.default.ids
   security_group_ids  = [aws_security_group.vpce.id]
   private_dns_enabled = true
-  tags = { Name = "scoutcloud-vpce-ecr-api", Project = "scoutcloud" }
+  tags                = { Name = "scoutcloud-vpce-ecr-api", Project = "scoutcloud" }
 }
 
 resource "aws_vpc_endpoint" "ecr_dkr" {
@@ -138,7 +138,7 @@ resource "aws_vpc_endpoint" "ecr_dkr" {
   subnet_ids          = data.aws_subnets.default.ids
   security_group_ids  = [aws_security_group.vpce.id]
   private_dns_enabled = true
-  tags = { Name = "scoutcloud-vpce-ecr-dkr", Project = "scoutcloud" }
+  tags                = { Name = "scoutcloud-vpce-ecr-dkr", Project = "scoutcloud" }
 }
 
 resource "aws_vpc_endpoint" "logs" {
@@ -148,7 +148,7 @@ resource "aws_vpc_endpoint" "logs" {
   subnet_ids          = data.aws_subnets.default.ids
   security_group_ids  = [aws_security_group.vpce.id]
   private_dns_enabled = true
-  tags = { Name = "scoutcloud-vpce-logs", Project = "scoutcloud" }
+  tags                = { Name = "scoutcloud-vpce-logs", Project = "scoutcloud" }
 }
 
 resource "aws_ecs_service" "score_fetcher" {
@@ -179,8 +179,8 @@ resource "aws_ecs_task_definition" "app" {
   execution_role_arn       = aws_iam_role.ecs_execution.arn
   task_role_arn            = aws_iam_role.ecs_task.arn
   container_definitions = jsonencode([{
-    name  = "scoutcloud-app"
-    image = "${aws_ecr_repository.app.repository_url}:latest"
+    name         = "scoutcloud-app"
+    image        = "${aws_ecr_repository.app.repository_url}:latest"
     portMappings = [{ containerPort = 80, hostPort = 80, protocol = "tcp" }]
     environment = [
       { name = "DATABASE_URL", value = "postgresql://scoutadmin:ScDb!R3c0rds%232026@${aws_db_instance.main.endpoint}/scoutcloud" },
