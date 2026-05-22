@@ -112,6 +112,12 @@ resource "aws_cloudfront_distribution" "main" {
     minimum_protocol_version = "TLSv1.2_2021"
   }
 
+  logging_config {
+    include_cookies = false
+    bucket          = aws_s3_bucket.cloudfront_logs.bucket_domain_name
+    prefix          = "cloudfront/"
+  }
+
   tags = { Name = "scoutcloud-cdn", Project = "scoutcloud" }
 }
 
@@ -129,4 +135,74 @@ resource "aws_route53_record" "root" {
 
 output "cloudfront_domain" {
   value = aws_cloudfront_distribution.main.domain_name
+}
+
+resource "aws_s3_bucket" "cloudfront_logs" {
+  bucket = "scoutcloud-cf-logs-${random_id.bucket_suffix.hex}"
+  tags   = { Name = "scoutcloud-cf-logs", Project = "scoutcloud" }
+}
+
+resource "aws_s3_bucket_ownership_controls" "cloudfront_logs" {
+  bucket = aws_s3_bucket.cloudfront_logs.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+resource "aws_s3_bucket_acl" "cloudfront_logs" {
+  depends_on = [aws_s3_bucket_ownership_controls.cloudfront_logs]
+  bucket     = aws_s3_bucket.cloudfront_logs.id
+  acl        = "private"
+}
+
+resource "aws_cloudwatch_dashboard" "scoutcloud" {
+  dashboard_name = "ScoutCloud-CDN"
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          title  = "CloudFront Cache Hit Rate"
+          region = "us-east-1"
+          metrics = [[
+            "AWS/CloudFront",
+            "CacheHitRate",
+            "DistributionId", aws_cloudfront_distribution.main.id,
+            "Region", "Global"
+          ]]
+          period = 300
+          stat   = "Average"
+          view   = "timeSeries"
+        }
+      },
+      {
+        type   = "metric"
+        x      = 12
+        y      = 0
+        width  = 12
+        height = 6
+        properties = {
+          title  = "CloudFront Origin Latency"
+          region = "us-east-1"
+          metrics = [[
+            "AWS/CloudFront",
+            "OriginLatency",
+            "DistributionId", aws_cloudfront_distribution.main.id,
+            "Region", "Global"
+          ]]
+          period = 300
+          stat   = "Average"
+          view   = "timeSeries"
+        }
+      }
+    ]
+  })
+}
+
+output "cloudwatch_dashboard_url" {
+  value = "https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#dashboards:name=ScoutCloud-CDN"
 }
