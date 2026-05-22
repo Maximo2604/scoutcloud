@@ -167,6 +167,14 @@ resource "aws_security_group" "alb" {
   }
 
   ingress {
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "HTTP 8080 for CloudFront"
+  }
+
+  ingress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
@@ -325,5 +333,16 @@ resource "aws_autoscaling_policy" "scale_up" {
       predefined_metric_type = "ASGAverageCPUUtilization"
     }
     target_value = 60.0
+  }
+}
+
+resource "aws_lb_listener" "cloudfront" {
+  load_balancer_arn = aws_lb.web.arn
+  port              = 8080
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.web.arn
   }
 }
