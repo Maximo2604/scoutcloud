@@ -73,6 +73,12 @@ resource "aws_lambda_function" "stat_processor" {
   source_code_hash = data.archive_file.stat_processor.output_base64sha256
   timeout          = 300
   tags             = { Project = "scoutcloud" }
+
+  environment {
+    variables = {
+      PLAYER_ALERTS_TOPIC_ARN = aws_sns_topic.player_alerts.arn
+    }
+  }
 }
 
 resource "aws_lambda_event_source_mapping" "stat_processor" {
@@ -95,4 +101,19 @@ resource "aws_cloudwatch_metric_alarm" "dlq_messages" {
     QueueName = aws_sqs_queue.stat_processing_dlq.name
   }
   alarm_actions = [aws_sns_topic.score_alerts.arn]
+}
+
+resource "aws_sns_topic" "player_alerts" {
+  name = "scoutcloud-player-alerts"
+  tags = { Name = "scoutcloud-player-alerts", Project = "scoutcloud" }
+}
+
+resource "aws_sns_topic_subscription" "player_alerts_email" {
+  topic_arn = aws_sns_topic.player_alerts.arn
+  protocol  = "email"
+  endpoint  = "diana.chen@example.com"
+}
+
+output "player_alerts_topic_arn" {
+  value = aws_sns_topic.player_alerts.arn
 }

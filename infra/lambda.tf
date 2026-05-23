@@ -77,3 +77,16 @@ resource "aws_lambda_permission" "eventbridge" {
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.every_5_minutes.arn
 }
+
+resource "aws_iam_role_policy" "lambda_sns" {
+  name = "sns-publish"
+  role = aws_iam_role.lambda.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["sns:Publish"]
+      Resource = aws_sns_topic.player_alerts.arn
+    }]
+  })
+}
