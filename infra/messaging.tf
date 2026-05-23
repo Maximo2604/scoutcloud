@@ -16,7 +16,7 @@ output "sns_topic_arn" {
 resource "aws_sqs_queue" "stat_processing_dlq" {
   name                      = "scoutcloud-stat-processing-dlq"
   message_retention_seconds = 1209600
-  tags = { Name = "scoutcloud-stat-processing-dlq", Project = "scoutcloud" }
+  tags                      = { Name = "scoutcloud-stat-processing-dlq", Project = "scoutcloud" }
 }
 
 resource "aws_sqs_queue" "stat_processing" {
