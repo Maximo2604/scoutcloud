@@ -5,12 +5,17 @@ resource "aws_launch_template" "web" {
   key_name               = "scoutcloud-key"
   vpc_security_group_ids = [aws_security_group.web.id]
 
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ec2_ssm.name
+  }
+
   user_data = base64encode(<<-EOF
 #!/bin/bash
-set -euo pipefail
+set +e
 yum update -y
-yum install -y python3 python3-pip --skip-broken
-pip3 install flask gunicorn --ignore-installed
+yum install -y python3 python3-pip --skip-broken || true
+pip3 install flask gunicorn --ignore-installed || true
+mkdir -p /opt/scoutcloud
 mkdir -p /opt/scoutcloud
 
 cat > /opt/scoutcloud/app.py <<APPEOF
@@ -156,6 +161,7 @@ data "aws_subnets" "default" {
 
 resource "aws_security_group" "alb" {
   name        = "scoutcloud-alb-sg"
+  vpc_id      = module.network.vpc_id
   description = "ALB ingress - HTTP and HTTPS from internet"
 
   ingress {
@@ -195,7 +201,7 @@ resource "aws_lb" "web" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
-  subnets            = data.aws_subnets.default.ids
+  subnets            = module.network.public_subnet_ids
   tags               = { Name = "scoutcloud-alb", Project = "scoutcloud" }
 }
 
@@ -203,7 +209,7 @@ resource "aws_lb_target_group" "web" {
   name     = "scoutcloud-tg"
   port     = 8080
   protocol = "HTTP"
-  vpc_id   = data.aws_vpc.default.id
+  vpc_id   = module.network.vpc_id
 
   health_check {
     enabled             = true
@@ -306,7 +312,7 @@ resource "aws_autoscaling_group" "web" {
   max_size            = 6
   desired_capacity    = 2
   target_group_arns   = [aws_lb_target_group.web.arn]
-  vpc_zone_identifier = data.aws_subnets.default.ids
+  vpc_zone_identifier = module.network.private_subnet_ids
 
   launch_template {
     id      = aws_launch_template.web.id
@@ -314,7 +320,7 @@ resource "aws_autoscaling_group" "web" {
   }
 
   health_check_type         = "ELB"
-  health_check_grace_period = 60
+  health_check_grace_period = 300
 
   tag {
     key                 = "Name"

@@ -14,6 +14,7 @@ data "http" "myip" {
 
 resource "aws_security_group" "web" {
   name        = "scoutcloud-web-sg"
+  vpc_id      = module.network.vpc_id
   description = "Security group for ScoutCloud web server"
 
   ingress {
@@ -53,6 +54,7 @@ resource "aws_instance" "web" {
   availability_zone      = "us-east-1a"
   key_name               = aws_key_pair.deployer.key_name
   vpc_security_group_ids = [aws_security_group.web.id]
+  subnet_id              = module.network.private_subnet_ids[0]
 
   user_data = base64encode(<<-USEREOF
 #!/bin/bash
@@ -169,4 +171,25 @@ USEREOF
 output "web_public_ip" {
   value       = aws_instance.web.public_ip
   description = "Public IP of the ScoutCloud web server"
+}
+resource "aws_iam_role" "ec2_ssm" {
+  name = "scoutcloud-ec2-ssm-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "ec2.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ec2_ssm" {
+  role       = aws_iam_role.ec2_ssm.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "ec2_ssm" {
+  name = "scoutcloud-ec2-ssm-profile"
+  role = aws_iam_role.ec2_ssm.name
 }

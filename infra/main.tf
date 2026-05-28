@@ -32,6 +32,9 @@ provider "aws" {
   region = "us-east-1"
 }
 
+module "network" {
+  source = "./modules/network"
+}
 # A group for developers with read-only access
 resource "aws_iam_group" "developers" {
   name = "scoutcloud-developers"
@@ -90,27 +93,4 @@ resource "aws_iam_role" "github_actions" {
   })
 }
 
-resource "aws_iam_role_policy" "github_actions_s3" {
-  name = "scoutcloud-s3-sync"
-  role = aws_iam_role.github_actions.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
-      Resource = [aws_s3_bucket.assets.arn, "${aws_s3_bucket.assets.arn}/*"]
-    }]
-  })
-}
-
 output "github_actions_role_arn" { value = aws_iam_role.github_actions.arn }
-
-module "compute" {
-  source            = "./modules/compute"
-  ami_id            = data.aws_ami.amazon_linux_2023.id
-  key_name          = "scoutcloud-key"
-  security_group_id = aws_security_group.web.id
-  subnet_ids        = data.aws_subnets.default.ids
-  project           = "scoutcloud"
-}

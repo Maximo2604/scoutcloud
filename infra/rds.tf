@@ -1,33 +1,27 @@
 resource "aws_db_subnet_group" "main" {
-  name       = "scoutcloud-db-subnet-group"
-  subnet_ids = data.aws_subnets.default.ids
+  name       = "scoutcloud-db-subnet-group-v2"
+  subnet_ids = module.network.isolated_subnet_ids
   tags       = { Name = "scoutcloud-db-subnet-group", Project = "scoutcloud" }
 }
 
 resource "aws_security_group" "rds" {
-  name = "scoutcloud-rds-sg"
+ name = "scoutcloud-rds-sg-v2"
+ vpc_id = module.network.vpc_id
 
-  ingress {
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.web.id]
-  }
+ ingress {
+ from_port = 5432
+ to_port = 5432
+ protocol = "tcp"
+ cidr_blocks = ["10.0.0.0/16"]
+ description = "Allow from app servers in VPC"
+ }
 
-  ingress {
-    from_port   = 5432
-    to_port     = 5432
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "Temporary dev access from laptop"
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+ egress {
+ from_port = 0
+ to_port = 0
+ protocol = "-1"
+ cidr_blocks = ["0.0.0.0/0"]
+ }
 }
 
 resource "aws_db_instance" "main" {
@@ -42,7 +36,7 @@ resource "aws_db_instance" "main" {
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [aws_security_group.rds.id]
   skip_final_snapshot    = true
-  publicly_accessible    = true
+  publicly_accessible    = false
   tags                   = { Name = "scoutcloud-db", Project = "scoutcloud" }
 }
 
