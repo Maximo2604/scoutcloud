@@ -28,6 +28,19 @@ def analyze_sentiment(text, comprehend=None):
         }
     }
 
+def detect_entities(text, comprehend=None):
+    if comprehend is None:
+        comprehend = get_comprehend_client()
+    response = comprehend.detect_entities(
+        Text=text,
+        LanguageCode="en",
+    )
+    return [
+        {"text": entity["Text"], "type": entity["Type"]}
+        for entity in response["Entities"]
+        if entity["Type"] in ["ORGANIZATION", "PERSON"]
+    ]
+
 def lambda_handler(event, context, comprehend=None, dynamodb=None):
     if dynamodb is None:
         dynamodb = get_dynamodb_resource()
@@ -39,6 +52,7 @@ def lambda_handler(event, context, comprehend=None, dynamodb=None):
         if not text:
             continue
         analysis = analyze_sentiment(text, comprehend)
+        entities = detect_entities(text, comprehend)
         comment_id = str(uuid.uuid4())
         table.put_item(Item={
             "comment_id":  comment_id,
@@ -46,6 +60,7 @@ def lambda_handler(event, context, comprehend=None, dynamodb=None):
             "text":        text[:500],
             "sentiment":   analysis["sentiment"],
             "scores":      analysis["scores"],
+            "entities":    entities,
             "analyzed_at": datetime.utcnow().isoformat(),
         })
         logger.info(json.dumps({
@@ -53,5 +68,5 @@ def lambda_handler(event, context, comprehend=None, dynamodb=None):
             "comment_id": comment_id,
             "sentiment": analysis["sentiment"],
         }))
-        results.append({"comment_id": comment_id, "sentiment": analysis["sentiment"]})
+        results.append({"comment_id": comment_id, "sentiment": analysis["sentiment"], "entities": entities})
     return {"analyzed": len(results), "results": results}
