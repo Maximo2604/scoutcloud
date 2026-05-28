@@ -1,5 +1,5 @@
-variable "vpc_cidr"    { default = "10.0.0.0/16" }
-variable "project"     { default = "scoutcloud" }
+variable "vpc_cidr" { default = "10.0.0.0/16" }
+variable "project" { default = "scoutcloud" }
 variable "environment" { default = "dev" }
 
 data "aws_availability_zones" "available" { state = "available" }
@@ -8,7 +8,7 @@ resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
   enable_dns_hostnames = true
   enable_dns_support   = true
-  tags = { Name = "${var.project}-vpc", Project = var.project, Environment = var.environment }
+  tags                 = { Name = "${var.project}-vpc", Project = var.project, Environment = var.environment }
 }
 
 resource "aws_internet_gateway" "main" {
@@ -22,7 +22,7 @@ resource "aws_subnet" "public" {
   cidr_block              = cidrsubnet(var.vpc_cidr, 8, count.index)
   availability_zone       = data.aws_availability_zones.available.names[count.index]
   map_public_ip_on_launch = true
-  tags = { Name = "${var.project}-public-${count.index + 1}", Tier = "public", Project = var.project }
+  tags                    = { Name = "${var.project}-public-${count.index + 1}", Tier = "public", Project = var.project }
 }
 
 resource "aws_subnet" "private" {
@@ -30,7 +30,7 @@ resource "aws_subnet" "private" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = cidrsubnet(var.vpc_cidr, 8, count.index + 10)
   availability_zone = data.aws_availability_zones.available.names[count.index]
-  tags = { Name = "${var.project}-private-${count.index + 1}", Tier = "private", Project = var.project }
+  tags              = { Name = "${var.project}-private-${count.index + 1}", Tier = "private", Project = var.project }
 }
 
 resource "aws_subnet" "isolated" {
@@ -38,7 +38,7 @@ resource "aws_subnet" "isolated" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = cidrsubnet(var.vpc_cidr, 8, count.index + 20)
   availability_zone = data.aws_availability_zones.available.names[count.index]
-  tags = { Name = "${var.project}-isolated-${count.index + 1}", Tier = "isolated", Project = var.project }
+  tags              = { Name = "${var.project}-isolated-${count.index + 1}", Tier = "isolated", Project = var.project }
 }
 
 resource "aws_eip" "nat" {
@@ -103,7 +103,7 @@ resource "aws_cloudwatch_log_group" "flow_logs" {
 resource "aws_iam_role" "flow_logs" {
   name = "${var.project}-flow-logs-role"
   assume_role_policy = jsonencode({
-    Version = "2012-10-17"
+    Version   = "2012-10-17"
     Statement = [{ Effect = "Allow", Principal = { Service = "vpc-flow-logs.amazonaws.com" }, Action = "sts:AssumeRole" }]
   })
 }
@@ -115,9 +115,9 @@ resource "aws_flow_log" "main" {
   log_destination = aws_cloudwatch_log_group.flow_logs.arn
 }
 
-output "vpc_id"              { value = aws_vpc.main.id }
-output "public_subnet_ids"   { value = aws_subnet.public[*].id }
-output "private_subnet_ids"  { value = aws_subnet.private[*].id }
+output "vpc_id" { value = aws_vpc.main.id }
+output "public_subnet_ids" { value = aws_subnet.public[*].id }
+output "private_subnet_ids" { value = aws_subnet.private[*].id }
 output "isolated_subnet_ids" { value = aws_subnet.isolated[*].id }
 
 # S3 Gateway VPC Endpoint - free, faster than NAT Gateway

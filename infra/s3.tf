@@ -1,8 +1,9 @@
 resource "random_id" "bucket_suffix" { byte_length = 4 }
 
 resource "aws_s3_bucket" "assets" {
-  bucket = "scoutcloud-assets-${random_id.bucket_suffix.hex}"
-  tags   = { Name = "scoutcloud-assets", Project = "scoutcloud" }
+  force_destroy = true
+  bucket        = "scoutcloud-assets-${random_id.bucket_suffix.hex}"
+  tags          = { Name = "scoutcloud-assets", Project = "scoutcloud" }
 }
 
 resource "aws_s3_bucket_versioning" "assets" {
