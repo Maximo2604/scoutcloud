@@ -20,7 +20,7 @@ resource "aws_cloudwatch_dashboard" "main" {
         width  = 12
         height = 6
         properties = {
-          title   = "ALB Request Count and 5xx Errors"
+          title = "ALB Request Count and 5xx Errors"
           metrics = [
             ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", "app/scoutcloud-alb/fbfb31079a3cd655"],
             ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "LoadBalancer", "app/scoutcloud-alb/fbfb31079a3cd655"]
@@ -35,7 +35,7 @@ resource "aws_cloudwatch_dashboard" "main" {
         width  = 12
         height = 6
         properties = {
-          title   = "Lambda Score Updater Invocations"
+          title = "Lambda Score Updater Invocations"
           metrics = [
             ["AWS/Lambda", "Invocations", "FunctionName", "scoutcloud-score-updater"],
             ["AWS/Lambda", "Errors", "FunctionName", "scoutcloud-score-updater"]
@@ -50,7 +50,7 @@ resource "aws_cloudwatch_dashboard" "main" {
         width  = 12
         height = 6
         properties = {
-          title   = "DynamoDB Latency"
+          title = "DynamoDB Latency"
           metrics = [
             ["AWS/DynamoDB", "SuccessfulRequestLatency", "TableName", "scoutcloud-live-scores", "Operation", "PutItem"],
             ["AWS/DynamoDB", "SuccessfulRequestLatency", "TableName", "scoutcloud-live-scores", "Operation", "GetItem"]
@@ -94,8 +94,9 @@ resource "aws_cloudwatch_metric_alarm" "error_rate" {
 }
 
 resource "aws_s3_bucket" "cloudtrail" {
-  bucket = "scoutcloud-cloudtrail-${random_id.bucket_suffix.hex}"
-  tags   = { Name = "scoutcloud-cloudtrail", Project = "scoutcloud" }
+  force_destroy = true
+  bucket        = "scoutcloud-cloudtrail-${random_id.bucket_suffix.hex}"
+  tags          = { Name = "scoutcloud-cloudtrail", Project = "scoutcloud" }
 }
 
 resource "aws_s3_bucket_policy" "cloudtrail" {
@@ -104,18 +105,18 @@ resource "aws_s3_bucket_policy" "cloudtrail" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "AWSCloudTrailAclCheck"
-        Effect = "Allow"
+        Sid       = "AWSCloudTrailAclCheck"
+        Effect    = "Allow"
         Principal = { Service = "cloudtrail.amazonaws.com" }
-        Action   = "s3:GetBucketAcl"
-        Resource = aws_s3_bucket.cloudtrail.arn
+        Action    = "s3:GetBucketAcl"
+        Resource  = aws_s3_bucket.cloudtrail.arn
       },
       {
-        Sid    = "AWSCloudTrailWrite"
-        Effect = "Allow"
+        Sid       = "AWSCloudTrailWrite"
+        Effect    = "Allow"
         Principal = { Service = "cloudtrail.amazonaws.com" }
-        Action   = "s3:PutObject"
-        Resource = "${aws_s3_bucket.cloudtrail.arn}/cloudtrail/AWSLogs/878598436021/*"
+        Action    = "s3:PutObject"
+        Resource  = "${aws_s3_bucket.cloudtrail.arn}/cloudtrail/AWSLogs/878598436021/*"
         Condition = { StringEquals = { "s3:x-amz-acl" = "bucket-owner-full-control" } }
       }
     ]
