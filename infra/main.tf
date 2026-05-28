@@ -94,3 +94,12 @@ resource "aws_iam_role" "github_actions" {
 }
 
 output "github_actions_role_arn" { value = aws_iam_role.github_actions.arn }
+
+locals {
+  common_tags = {
+    Project     = "scoutcloud"
+    Environment = terraform.workspace
+    Owner       = "engineering"
+    ManagedBy   = "terraform"
+  }
+}
