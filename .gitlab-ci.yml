@@ -24,8 +24,8 @@ security:
   image: bridgecrew/checkov:latest
   before_script: []
   script:
-    - checkov -d $TF_DIR --quiet
-  allow_failure: true
+    - checkov -d $TF_DIR --check HIGH --quiet --compact
+  allow_failure: false
 
 plan:
   stage: plan
