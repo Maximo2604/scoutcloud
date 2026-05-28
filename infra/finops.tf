@@ -123,3 +123,62 @@ resource "aws_lambda_permission" "start_dev" {
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.start_dev.arn
 }
+
+# Cost report Lambda
+data "archive_file" "cost_report" {
+  type        = "zip"
+  source_dir  = "../src/functions/cost-report"
+  output_path = "/tmp/cost-report.zip"
+}
+
+resource "aws_lambda_function" "cost_report" {
+  filename         = data.archive_file.cost_report.output_path
+  function_name    = "scoutcloud-cost-report"
+  role             = aws_iam_role.lambda.arn
+  handler          = "handler.lambda_handler"
+  runtime          = "python3.11"
+  source_code_hash = data.archive_file.cost_report.output_base64sha256
+  timeout          = 60
+  tags             = local.common_tags
+
+  environment {
+    variables = {
+      SLACK_WEBHOOK_URL = ""
+    }
+  }
+}
+
+# Run every Monday at 9am ET (2pm UTC)
+resource "aws_cloudwatch_event_rule" "cost_report" {
+  name                = "weekly-cost-report"
+  schedule_expression = "cron(0 14 ? * MON *)"
+  tags                = local.common_tags
+}
+
+resource "aws_cloudwatch_event_target" "cost_report" {
+  rule      = aws_cloudwatch_event_rule.cost_report.name
+  target_id = "CostReport"
+  arn       = aws_lambda_function.cost_report.arn
+}
+
+resource "aws_lambda_permission" "cost_report" {
+  statement_id  = "AllowEventBridgeCostReport"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.cost_report.function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.cost_report.arn
+}
+
+# Add Cost Explorer permissions to Lambda role
+resource "aws_iam_role_policy" "lambda_cost_explorer" {
+  name = "cost-explorer-access"
+  role = aws_iam_role.lambda.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["ce:GetCostAndUsage", "ce:GetCostForecast"]
+      Resource = "*"
+    }]
+  })
+}
