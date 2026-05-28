@@ -119,3 +119,21 @@ output "vpc_id"              { value = aws_vpc.main.id }
 output "public_subnet_ids"   { value = aws_subnet.public[*].id }
 output "private_subnet_ids"  { value = aws_subnet.private[*].id }
 output "isolated_subnet_ids" { value = aws_subnet.isolated[*].id }
+
+# S3 Gateway VPC Endpoint - free, faster than NAT Gateway
+# Cost saving: 100GB/month * $0.045/GB = $4.50/month saved
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.us-east-1.s3"
+  vpc_endpoint_type = "Gateway"
+
+  # Associate with private AND isolated route tables
+  route_table_ids = [
+    aws_route_table.private.id,
+    aws_route_table.isolated.id
+  ]
+
+  tags = { Name = "${var.project}-s3-endpoint", Project = var.project }
+}
+
+output "s3_endpoint_id" { value = aws_vpc_endpoint.s3.id }
