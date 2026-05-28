@@ -62,17 +62,3 @@ resource "aws_s3_bucket_policy" "assets" {
     }]
   })
 }
-
-# DELIBERATE MISCONFIGURATION FOR TESTING - remove before merge
-resource "aws_s3_bucket" "public_test" {
-  bucket = "scoutcloud-public-test-deliberate"
-  tags   = { Name = "test-misconfiguration" }
-}
-
-resource "aws_s3_bucket_public_access_block" "public_test" {
-  bucket                  = aws_s3_bucket.public_test.id
-  block_public_acls       = false
-  block_public_policy     = false
-  ignore_public_acls      = false
-  restrict_public_buckets = false
-}
