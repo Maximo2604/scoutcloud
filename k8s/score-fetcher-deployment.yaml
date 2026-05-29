@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: score-fetcher
+  namespace: scoutcloud
+  labels:
+    app: score-fetcher
+    project: scoutcloud
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: score-fetcher
+  template:
+    metadata:
+      labels:
+        app: score-fetcher
+    spec:
+      containers:
+        - name: score-fetcher
+          image: 878598436021.dkr.ecr.us-east-1.amazonaws.com/scoutcloud/score-fetcher:latest
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          envFrom:
+            - secretRef:
+                name: aws-credentials
+          env:
+            - name: AWS_DEFAULT_REGION
+              value: us-east-1
+            - name: DYNAMODB_TABLE
+              value: scoutcloud-live-scores
