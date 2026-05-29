@@ -1,0 +1,56 @@
+- name: Configure ScoutCloud web servers
+  hosts: env_dev
+  become: yes
+  vars:
+    scoutcloud_version: "{{ lookup('env', 'SCOUTCLOUD_VERSION') | default('latest') }}"
+  tasks:
+    - name: Update all packages
+      dnf:
+        name: "*"
+        state: latest
+        update_cache: yes
+    - name: Install Python and pip
+      dnf:
+        name:
+          - python3
+          - python3-pip
+        state: present
+    - name: Install Flask and gunicorn
+      pip:
+        name:
+          - flask
+          - gunicorn
+        state: present
+    - name: Ensure scoutcloud directory exists
+      file:
+        path: /opt/scoutcloud
+        state: directory
+        mode: '0755'
+    - name: Deploy ScoutCloud app
+      template:
+        src: templates/app.py.j2
+        dest: /opt/scoutcloud/app.py
+        mode: '0644'
+    - name: Configure systemd service
+      copy:
+        content: |
+          [Unit]
+          Description=ScoutCloud Flask app
+          After=network-online.target
+          [Service]
+          Type=simple
+          WorkingDirectory=/opt/scoutcloud
+          ExecStart=/usr/local/bin/gunicorn -b 0.0.0.0:8080 -w 2 app:app
+          Restart=always
+          RestartSec=5
+          [Install]
+          WantedBy=multi-user.target
+        dest: /etc/systemd/system/scoutcloud.service
+      notify: Restart ScoutCloud
+  handlers:
+    - name: Restart ScoutCloud
+      systemd:
+        name: scoutcloud
+        state: restarted
+        daemon_reload: yes
+        enabled: yes
