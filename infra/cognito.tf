@@ -103,3 +103,35 @@ resource "aws_apigatewayv2_authorizer" "cognito" {
 output "cognito_user_pool_id" { value = aws_cognito_user_pool.main.id }
 output "cognito_client_id" { value = aws_cognito_user_pool_client.web.id }
 output "cognito_hosted_ui_domain" { value = aws_cognito_user_pool_domain.main.domain }
+
+# Mobile app client — shorter token lifetimes for security
+# Mobile devices are more likely to be lost or stolen than laptops.
+# 4-hour access tokens (vs 1-hour web) balance UX with security.
+# Refresh token rotation means stolen refresh tokens are invalidated on use.
+# SRP auth only — mobile never sends plaintext passwords.
+resource "aws_cognito_user_pool_client" "mobile" {
+  name         = "scoutcloud-mobile"
+  user_pool_id = aws_cognito_user_pool.main.id
+
+  generate_secret         = false
+  enable_token_revocation = true
+
+  explicit_auth_flows = [
+    "ALLOW_USER_SRP_AUTH",
+    "ALLOW_REFRESH_TOKEN_AUTH",
+  ]
+
+  access_token_validity  = 4
+  id_token_validity      = 4
+  refresh_token_validity = 7
+
+  token_validity_units {
+    access_token  = "hours"
+    id_token      = "hours"
+    refresh_token = "days"
+  }
+
+  supported_identity_providers = ["COGNITO"]
+}
+
+output "cognito_mobile_client_id" { value = aws_cognito_user_pool_client.mobile.id }
