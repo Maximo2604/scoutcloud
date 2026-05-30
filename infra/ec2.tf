@@ -1,3 +1,4 @@
+# EC2 configuration
 # ec2.tf — ScoutCloud web server
 data "aws_ami" "amazon_linux_2023" {
   most_recent = true
