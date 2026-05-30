@@ -1,3 +1,4 @@
+# Updated: graceful bucket check
 name: Deploy Static Assets to S3
 
 on:
