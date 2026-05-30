@@ -6,9 +6,3 @@ variable "domain_name" {
   description = "Your registered domain (e.g. scoutcloud.dev)"
   type        = string
 }
-
-variable "ec2_public_key" {
-  description = "Public key for EC2 key pair"
-  type        = string
-  default     = ""
-}

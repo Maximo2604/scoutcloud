@@ -5,17 +5,12 @@ resource "aws_launch_template" "web" {
   key_name               = "scoutcloud-key"
   vpc_security_group_ids = [aws_security_group.web.id]
 
-  iam_instance_profile {
-    name = aws_iam_instance_profile.ec2_ssm.name
-  }
-
   user_data = base64encode(<<-EOF
 #!/bin/bash
-set +e
+set -euo pipefail
 yum update -y
-yum install -y python3 python3-pip --skip-broken || true
-pip3 install flask gunicorn --ignore-installed || true
-mkdir -p /opt/scoutcloud
+yum install -y python3 python3-pip --skip-broken
+pip3 install flask gunicorn --ignore-installed
 mkdir -p /opt/scoutcloud
 
 cat > /opt/scoutcloud/app.py <<APPEOF
@@ -161,7 +156,6 @@ data "aws_subnets" "default" {
 
 resource "aws_security_group" "alb" {
   name        = "scoutcloud-alb-sg"
-  vpc_id      = module.network.vpc_id
   description = "ALB ingress - HTTP and HTTPS from internet"
 
   ingress {
@@ -170,14 +164,6 @@ resource "aws_security_group" "alb" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
     description = "HTTP"
-  }
-
-  ingress {
-    from_port   = 8080
-    to_port     = 8080
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-    description = "HTTP 8080 for CloudFront"
   }
 
   ingress {
@@ -201,7 +187,7 @@ resource "aws_lb" "web" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
-  subnets            = module.network.public_subnet_ids
+  subnets            = data.aws_subnets.default.ids
   tags               = { Name = "scoutcloud-alb", Project = "scoutcloud" }
 }
 
@@ -209,7 +195,7 @@ resource "aws_lb_target_group" "web" {
   name     = "scoutcloud-tg"
   port     = 8080
   protocol = "HTTP"
-  vpc_id   = module.network.vpc_id
+  vpc_id   = data.aws_vpc.default.id
 
   health_check {
     enabled             = true
@@ -312,7 +298,7 @@ resource "aws_autoscaling_group" "web" {
   max_size            = 6
   desired_capacity    = 2
   target_group_arns   = [aws_lb_target_group.web.arn]
-  vpc_zone_identifier = module.network.private_subnet_ids
+  vpc_zone_identifier = data.aws_subnets.default.ids
 
   launch_template {
     id      = aws_launch_template.web.id
@@ -320,7 +306,7 @@ resource "aws_autoscaling_group" "web" {
   }
 
   health_check_type         = "ELB"
-  health_check_grace_period = 300
+  health_check_grace_period = 60
 
   tag {
     key                 = "Name"
@@ -339,16 +325,5 @@ resource "aws_autoscaling_policy" "scale_up" {
       predefined_metric_type = "ASGAverageCPUUtilization"
     }
     target_value = 60.0
-  }
-}
-
-resource "aws_lb_listener" "cloudfront" {
-  load_balancer_arn = aws_lb.web.arn
-  port              = 8080
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.web.arn
   }
 }

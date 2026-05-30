@@ -23,19 +23,27 @@ jobs:
 
       - name: Sync to S3
         run: |
-          aws s3 sync src/static/ s3://${{ secrets.S3_BUCKET_NAME }}/static/ --delete
+          if aws s3 ls s3://${{ secrets.S3_BUCKET_NAME }} 2>/dev/null; then
+            aws s3 sync src/static/ s3://${{ secrets.S3_BUCKET_NAME }}/static/ --delete
+          else
+            echo "S3 bucket not found - infrastructure may be destroyed. Skipping sync."
+          fi
 
       - name: Print summary
-        run: aws s3 ls s3://${{ secrets.S3_BUCKET_NAME }}/static/ --recursive
-      - name: Invalidate CloudFront cache
+        run: aws s3 ls s3://${{ secrets.S3_BUCKET_NAME }}/static/ --recursive 2>/dev/null || echo "Bucket not available"
+
+      - name: Deployment Receipt
         run: |
-          DOMAIN=$(cd infra && terraform output -raw domain_name 2>/dev/null || echo "app.scoutcloud.dev")
-          DISTRIBUTION_ID=$(aws cloudfront list-distributions \
-            --query "DistributionList.Items[?Aliases.Items[?contains(@,\'$DOMAIN\')]].Id" \
-            --output text)
-          if [ -n "$DISTRIBUTION_ID" ]; then
-            aws cloudfront create-invalidation \
-              --distribution-id $DISTRIBUTION_ID \
-              --paths "/*"
-            echo "Cache invalidated for: $DISTRIBUTION_ID"
-          fi
+          TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          FILE_COUNT=$(aws s3 ls s3://${{ secrets.S3_BUCKET_NAME }}/static/ --recursive | wc -l | tr -d ' ')
+          TOTAL_SIZE=$(aws s3 ls s3://${{ secrets.S3_BUCKET_NAME }}/static/ --recursive --human-readable | awk '{print $3, $4}' | tail -1)
+          BUCKET=${{ secrets.S3_BUCKET_NAME }}
+
+          echo "## 🚀 Deployment Receipt" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 📅 Timestamp | \`$TIMESTAMP\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📁 Files Synced | \`$FILE_COUNT\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 💾 Total Size | \`$TOTAL_SIZE\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🪣 S3 Bucket | \`$BUCKET\` |" >> $GITHUB_STEP_SUMMARY

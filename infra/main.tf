@@ -1,13 +1,6 @@
 # main.tf — ScoutCloud IAM configuration
 terraform {
   required_version = ">= 1.0"
-  backend "s3" {
-    bucket         = "scoutcloud-tfstate-878598436021"
-    key            = "scoutcloud/dev/terraform.tfstate"
-    region         = "us-east-1"
-    dynamodb_table = "scoutcloud-tf-locks"
-    encrypt        = true
-  }
   required_providers {
     aws = {
       source  = "hashicorp/aws"
@@ -17,14 +10,6 @@ terraform {
       source  = "hashicorp/http"
       version = "~> 3.0"
     }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.0"
-    }
-    archive = {
-      source  = "hashicorp/archive"
-      version = "~> 2.0"
-    }
   }
 }
 
@@ -32,9 +17,6 @@ provider "aws" {
   region = "us-east-1"
 }
 
-module "network" {
-  source = "./modules/network"
-}
 # A group for developers with read-only access
 resource "aws_iam_group" "developers" {
   name = "scoutcloud-developers"
@@ -69,32 +51,6 @@ output "contractor_secret_access_key" {
   sensitive = true
 }
 
-resource "aws_iam_openid_connect_provider" "github" {
-  url             = "https://token.actions.githubusercontent.com"
-  client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = []
-}
-
-resource "aws_iam_role" "github_actions" {
-  name = "scoutcloud-github-actions"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { Federated = aws_iam_openid_connect_provider.github.arn }
-      Action    = "sts:AssumeRoleWithWebIdentity"
-      Condition = {
-        StringLike = {
-          "token.actions.githubusercontent.com:sub" = "repo:Maximo2604/scoutcloud:*"
-        }
-      }
-    }]
-  })
-}
-
-output "github_actions_role_arn" { value = aws_iam_role.github_actions.arn }
-
 locals {
   common_tags = {
     Project     = "scoutcloud"
@@ -102,4 +58,10 @@ locals {
     Owner       = "engineering"
     ManagedBy   = "terraform"
   }
+}
+
+module "network" {
+  source      = "./modules/network"
+  project     = "scoutcloud"
+  environment = "dev"
 }

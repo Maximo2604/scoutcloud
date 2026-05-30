@@ -1,3 +1,8 @@
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+}
+
 # GuardDuty requires subscription - skipped
 # resource "aws_guardduty_detector" "main" {
 #   enable = true

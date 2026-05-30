@@ -1,47 +1,77 @@
-# ScoutCloud Interview Prep
+# Interview prep - ScoutCloud talking points
 
-## Question 1: Walk me through ScoutCloud
+## One-line pitch
 
-A Knicks fan opens ScoutCloud. CloudFront serves the static site from the nearest edge location. When they check live scores, an API call goes through CloudFront to ALB to EC2 to DynamoDB. Scores update automatically every 5 minutes via Lambda and EventBridge. A premium scout logs in via Cognito, gets a JWT, and queries advanced stats from our RDS PostgreSQL database.
+"ScoutCloud is a real-time NBA intelligence platform I built on AWS to
+practice everything in the SAA and SAP certifications. It started as a
+single EC2 instance with placeholder data and grew into a
+Well-Architected, multi-service platform serving 15,000 monthly users."
 
-The platform started as a single EC2 instance with CSV files and evolved into a Well-Architected multi-service platform across 35+ AWS services serving 15,000 users.
+## The story arc (one chapter per AWS pillar)
 
-## Question 2: Why DynamoDB for live scores instead of RDS?
+1. **EC2 + systemd** - first deploy. user_data clones the repo, gunicorn
+   serves the dashboard. Placeholder players, placeholder scores.
+2. **EBS snapshots** - reliability. Snapshot the volume daily.
+3. **ALB + ASG + Route53 + ACM** - operational excellence. Real domain
+   (scoutcloud.dev), HTTPS, multi-AZ.
+4. **S3 + GitHub Actions OIDC** - CI/CD. Static assets pushed on every
+   merge to main.
+5. **RDS PostgreSQL + DynamoDB** - persistence. Players come from
+   relational, live scores from NoSQL.
+6. **ECS Fargate + Lambda** - serverless compute. Same Docker image as
+   EC2, no patching.
+7. **CloudFront + edge caching** - performance.
+8. **SNS + SQS + DLQ** - decoupling. Score updates fan out to alerts.
+9. **CloudWatch + Prometheus + Grafana** - observability.
+10. **Custom VPC, three-tier subnets** - networking.
+11. **Secrets Manager + KMS + WAF + GuardDuty + Vault** - security.
+12. **Rekognition + Comprehend** - AI/ML.
+13. **Cost tags + Budgets + cleanup Lambda** - cost optimization.
+14. **Cognito + EKS demo** - identity and orchestration.
+15. **AWS Backup + Ansible + FIS** - reliability and chaos.
 
-Access pattern: high-volume, single-key lookups at sub-10ms latency. DynamoDB is designed for exactly this. RDS cannot serve 50,000 concurrent score requests at consistent millisecond latency. RDS is used for complex relational queries like player career stats and game history where we need JOINs and aggregations.
+## Frequently asked questions
 
-## Question 3: How do you handle production deployments without downtime?
+### "How did you handle secrets?"
 
-Infrastructure changes go through GitHub Actions: PR opens, terraform plan is posted as a PR comment, human reviews the plan, merges, and terraform apply runs. Application deployments use ALB and ASG with rolling updates. New instances launch, pass health checks on the /health endpoint, then old instances are drained and terminated. Zero downtime because the ALB never routes traffic to unhealthy instances.
+Database password lives in Secrets Manager, encrypted with a
+customer-managed KMS key. The ECS task role has a tightly scoped
+`secretsmanager:GetSecretValue` policy that names the secret ARN
+explicitly - no wildcards. At startup, the app calls
+`get_secret_value`, extracts the password, and reconstructs
+`DATABASE_URL` in memory. The password never appears in an env var,
+container definition, or CloudWatch log.
 
-## Question 4: How did you secure the platform?
+### "How did you control cost?"
 
-Defense in depth across multiple layers:
-- WAF at the CloudFront layer blocks SQL injection and rate limits to 1000 requests per 5 minutes
-- VPC with three tiers: ALB in public, EC2 in private, RDS in isolated subnet unreachable from internet
-- GuardDuty for continuous threat detection
-- KMS encryption at rest for RDS
-- Secrets Manager for database credentials instead of environment variables
-- Pre-commit hooks with checkov and terraform_fmt
-- GitLab CI security stage blocks merges on HIGH severity findings
-- Zero credentials ever committed to git
+Three layers:
 
-## Question 5: What would you improve with more time?
+1. **Right-sizing** - t2.micro for the dev EC2, db.t3.micro for RDS,
+   PAY_PER_REQUEST DynamoDB, 256/512 CPU/memory Fargate task.
+2. **Budgets and alarms** - a $60/month budget with email alarms at 80%
+   and 100%.
+3. **Cleanup automation** - a Lambda runs every Sunday and terminates
+   anything tagged `Environment=dev` that has not been touched in 7 days.
 
-Cross-region active-active deployment for the Game 7 scenario. Currently our RTO for a us-east-1 outage is 4+ hours. I would deploy a second region in us-west-2 and use Route53 latency routing with automatic failover. I would also add distributed tracing with AWS X-Ray to reduce mean time to resolution during incidents. Finally, I would implement blue-green deployments using CodeDeploy to make application rollbacks instantaneous instead of requiring a new ASG cycle.
+### "How would you scale this for the regular season?"
 
-## Key Numbers to Remember
+The dev environment is intentionally a single t2.micro and a single
+Fargate task. To go to production:
 
-- 35+ AWS services used hands-on
-- 18 chapters completed with challenges
-- 30+ merged PRs in GitHub
-- 2 Lambda functions for AI: Rekognition photo tagger, Comprehend sentiment analyzer
-- 6 total Lambda functions deployed
-- VPC CIDR: 10.0.0.0/16
-- ASG: min 2, max 6 instances
-- RDS: db.t3.micro PostgreSQL
-- EKS: 2 t3.small nodes, Kubernetes 1.31
-- Monthly cost: approximately $51
-- RTO for instance failure: under 5 minutes
-- RTO for full region failure: 4+ hours
-- RPO: 24 hours (daily backups)
+- Switch the ALB target from a single EC2 to an ASG (min 2, max 6).
+- Move ECS service to 2+ tasks, behind an ALB target group, autoscaled on
+  CPU.
+- Switch RDS to a Multi-AZ db.t3.small with a read replica.
+- Switch DynamoDB to a provisioned-capacity table with autoscaling.
+- Add a CloudFront distribution in front of the ALB and S3 origin.
+
+That is roughly the Chapter 10 to Chapter 13 progression.
+
+### "What would you do differently next time?"
+
+- Start with the VPC and IAM chapters first - I rebuilt the SG twice
+  because I added them after EC2 instead of before.
+- Use a remote Terraform backend (S3 + DynamoDB lock) from day one
+  instead of switching mid-bootcamp.
+- Write the Ansible playbook earlier - it would have replaced the
+  user_data bash script in Chapter 3.
