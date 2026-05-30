@@ -34,6 +34,11 @@ jobs:
 
       - name: Deployment Receipt
         run: |
+          if ! aws s3 ls s3://${{ secrets.S3_BUCKET_NAME }} 2>/dev/null; then
+            echo "## Deployment Skipped" >> $GITHUB_STEP_SUMMARY
+            echo "Infrastructure not deployed." >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
           TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
           FILE_COUNT=$(aws s3 ls s3://${{ secrets.S3_BUCKET_NAME }}/static/ --recursive | wc -l | tr -d ' ')
           TOTAL_SIZE=$(aws s3 ls s3://${{ secrets.S3_BUCKET_NAME }}/static/ --recursive --human-readable | awk '{print $3, $4}' | tail -1)
