@@ -13,8 +13,6 @@ Evolved into a Well-Architected, multi-service platform serving 15,000 users.
 
 ![ScoutCloud Architecture](docs/architecture-diagram.png)
 
-![ScoutCloud Architecture](docs/architecture-diagram.png)
-
 ## What it does
 
 **For fans - free tier (scoutcloud.dev)**
